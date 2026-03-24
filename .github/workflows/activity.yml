@@ -1,0 +1,31 @@
+name: Activity Bot
+
+on:
+  schedule:
+    # Runs at ~9 AM and ~6 PM UTC daily (times vary due to in-script random delay)
+    - cron: "0 9 * * *"
+    - cron: "0 18 * * *"
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    # Toggle: set to false to disable without deleting the workflow
+    if: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run activity bot
+        run: python activity_bot.py
+
+      - name: Push changes
+        run: git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
