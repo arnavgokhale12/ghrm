@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ghrm — GitHub Activity Bot</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --green-dim: #238636;
+      --accent: #58a6ff;
+      --font: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px 80px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(63, 185, 80, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 32px;
+      padding-left: 22px;
+    }
+
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .section-header span:first-child {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* How it works */
+    .steps {
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .step-text strong {
+      color: var(--text);
+    }
+
+    /* Commit feed */
+    .commit-list {
+      padding: 0;
+    }
+
+    .commit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .commit-item:last-child {
+      border-bottom: none;
+    }
+
+    .commit-item:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .commit-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green-dim);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .commit-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .commit-msg {
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .commit-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .commit-sha {
+      color: var(--accent);
+      font-size: 11px;
+      font-family: var(--font);
+      text-decoration: none;
+    }
+
+    .commit-sha:hover { text-decoration: underline; }
+
+    /* Stats bar */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .stat {
+      padding: 16px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat:last-child { border-right: none; }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    /* Loading / error states */
+    .loading, .error-msg {
+      padding: 24px 16px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .error-msg { color: #f85149; }
+
+    /* Footer */
+    footer {
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    /* Refresh button */
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .refresh-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Schedule badge */
+    .badge {
+      display: inline-block;
+      background: rgba(63, 185, 80, 0.1);
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="pulse"></div>
+      <h1>ghrm</h1>
+      <span class="badge">live</span>
+    </div>
+    <p class="tagline">GitHub contribution calendar activity bot</p>
+
+    <!-- Stats -->
+    <div class="section">
+      <div class="section-header">
+        <span>Stats</span>
+        <span id="last-updated">loading…</span>
+      </div>
+      <div class="stats" id="stats-area">
+        <div class="stat">
+          <div class="stat-value" id="stat-commits">—</div>
+          <div class="stat-label">Total Commits</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-streak">—</div>
+          <div class="stat-label">Day Streak</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-today">—</div>
+          <div class="stat-label">Today</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="section">
+      <div class="section-header">
+        <span>How it works</span>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>GitHub Actions</strong> triggers the bot at <strong>9 AM</strong> and <strong>6 PM UTC</strong> every day via cron schedule.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>activity_bot.py</strong> sleeps a random 0–20 min offset, then appends a UTC timestamp to <code>heartbeat.txt</code> so commits don't land at the exact same second.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            The script picks a <strong>random commit message</strong> from a pool and pushes — keeping the contribution graph alive without a fixed fingerprint.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">
+            No secrets needed. The workflow uses GitHub's built-in <strong>GITHUB_TOKEN</strong> for push access.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live commit feed -->
+    <div class="section">
+      <div class="section-header">
+        <span>Live Commit Feed</span>
+        <button class="refresh-btn" id="refresh-btn" onclick="loadCommits()">↻ refresh</button>
+      </div>
+      <div class="commit-list" id="commit-list">
+        <div class="loading">Fetching commits from GitHub…</div>
+      </div>
+    </div>
+
+    <footer>
+      View source on <a href="https://github.com/arnavgokhale12/ghrm" target="_blank" rel="noopener">GitHub</a>
+      &nbsp;·&nbsp;
+      Built by <a href="https://arnavgokhale.com" target="_blank" rel="noopener">Arnav Gokhale</a>
+    </footer>
+  </div>
+
+  <script>
+    const OWNER = "arnavgokhale12";
+    const REPO  = "ghrm";
+    const API   = `https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=30`;
+
+    function timeAgo(dateStr) {
+      const diff = (Date.now() - new Date(dateStr)) / 1000;
+      if (diff < 60)    return `${Math.floor(diff)}s ago`;
+      if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    function sameDay(a, b) {
+      const da = new Date(a), db = new Date(b);
+      return da.getFullYear() === db.getFullYear() &&
+             da.getMonth()    === db.getMonth()    &&
+             da.getDate()     === db.getDate();
+    }
+
+    async function loadCommits() {
+      const btn  = document.getElementById("refresh-btn");
+      const list = document.getElementById("commit-list");
+      btn.textContent = "↻ loading";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(API, {
+          headers: { Accept: "application/vnd.github+json" }
+        });
+
+        if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+        const commits = await res.json();
+
+        // Stats
+        const total = commits.length; // within last 30
+        const now   = new Date();
+        const todayCount = commits.filter(c =>
+          sameDay(c.commit.author.date, now)
+        ).length;
+
+        // Streak: count consecutive days back from today
+        let streak = 0;
+        let cursor = new Date(now);
+        cursor.setHours(0, 0, 0, 0);
+        for (let i = 0; i < 30; i++) {
+          const dayStr = cursor.toISOString().slice(0, 10);
+          const hasCommit = commits.some(c =>
+            c.commit.author.date.startsWith(dayStr)
+          );
+          if (hasCommit) { streak++; cursor.setDate(cursor.getDate() - 1); }
+          else break;
+        }
+
+        document.getElementById("stat-commits").textContent = total + "+";
+        document.getElementById("stat-streak").textContent = streak;
+        document.getElementById("stat-today").textContent = todayCount;
+        document.getElementById("last-updated").textContent =
+          "updated " + timeAgo(new Date().toISOString());
+
+        // Render list
+        list.innerHTML = commits.map(c => {
+          const sha   = c.sha.slice(0, 7);
+          const msg   = c.commit.message.split("\n")[0];
+          const date  = c.commit.author.date;
+          const url   = c.html_url;
+          return `
+            <div class="commit-item">
+              <div class="commit-dot"></div>
+              <div class="commit-body">
+                <div class="commit-msg">${escHtml(msg)}</div>
+                <div class="commit-meta">
+                  <a class="commit-sha" href="${url}" target="_blank" rel="noopener">${sha}</a>
+                  &nbsp;·&nbsp; ${timeAgo(date)}
+                  &nbsp;·&nbsp; ${new Date(date).toLocaleString("en-US", {
+                    month: "short", day: "numeric",
+                    hour: "2-digit", minute: "2-digit", timeZone: "UTC",
+                    timeZoneName: "short"
+                  })}
+                </div>
+              </div>
+            </div>`;
+        }).join("");
+
+      } catch (err) {
+        list.innerHTML = `<div class="error-msg">Could not load commits: ${escHtml(err.message)}</div>`;
+        document.getElementById("last-updated").textContent = "error";
+      } finally {
+        btn.textContent = "↻ refresh";
+        btn.disabled = false;
+      }
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    loadCommits();
+  </script>
+</body>
+</html>
