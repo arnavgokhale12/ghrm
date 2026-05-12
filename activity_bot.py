@@ -8,17 +8,29 @@ import subprocess
 import random
 import time
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-# Weighted daily target. Two is intentionally most common, zero is rare.
-DAILY_COMMIT_WEIGHTS = {
+# Weighted daily targets. Two is intentionally most common.
+WEEKDAY_COMMIT_WEIGHTS = {
     0: 0.06,
-    1: 0.18,
+    1: 0.16,
     2: 0.44,
-    3: 0.22,
+    3: 0.24,
     4: 0.10,
 }
 
+WEEKEND_COMMIT_WEIGHTS = {
+    0: 0.22,
+    1: 0.38,
+    2: 0.28,
+    3: 0.09,
+    4: 0.03,
+}
+
+# Rarely create a two-day break. This is deterministic per day so both
+# scheduled runs agree on whether today is a break day.
+BREAK_START_PROBABILITY = 0.025
+MAX_COMMITS_PER_RUN = 2
 HEARTBEAT_PATH = "heartbeat.txt"
 
 
@@ -27,12 +39,27 @@ def rng_for_day(day_key):
     return random.Random(int(seed[:16], 16))
 
 
-def weighted_daily_target(day_key):
+def is_break_start(day_key):
     rng = rng_for_day(day_key)
+    return rng.random() < BREAK_START_PROBABILITY
+
+
+def is_break_day(day):
+    yesterday = day - timedelta(days=1)
+    return is_break_start(day.isoformat()) or is_break_start(yesterday.isoformat())
+
+
+def weighted_daily_target(day):
+    if is_break_day(day):
+        return 0
+
+    day_key = day.isoformat()
+    weights = WEEKEND_COMMIT_WEIGHTS if day.weekday() >= 5 else WEEKDAY_COMMIT_WEIGHTS
+    rng = rng_for_day(f"{day_key}:target")
     pick = rng.random()
     cumulative = 0
 
-    for count, weight in DAILY_COMMIT_WEIGHTS.items():
+    for count, weight in weights.items():
         cumulative += weight
         if pick <= cumulative:
             return count
@@ -55,14 +82,33 @@ def planned_commits_for_run(target, already_done, now):
 
     # Morning run handles roughly the first half; later/manual runs catch up.
     if now.hour < 15:
-        return min(remaining, target // 2)
+        return min(remaining, max(1, target // 2), MAX_COMMITS_PER_RUN)
 
-    return remaining
+    return min(remaining, MAX_COMMITS_PER_RUN)
+
+
+def last_commit_message():
+    result = subprocess.run(
+        ["git", "log", "-1", "--pretty=%s"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return ""
+
+    return result.stdout.strip()
+
+
+def choose_commit_message(previous_message):
+    choices = [message for message in messages if message != previous_message]
+    return random.choice(choices or messages)
 
 
 now = datetime.now(timezone.utc)
-day_key = now.strftime("%Y-%m-%d")
-target_commits = weighted_daily_target(day_key)
+today = now.date()
+day_key = today.isoformat()
+target_commits = weighted_daily_target(today)
 already_done = count_today_entries(day_key)
 commits_this_run = planned_commits_for_run(target_commits, already_done, now)
 
@@ -74,15 +120,20 @@ if commits_this_run == 0:
 delay_seconds = random.randint(0, 20 * 60)
 time.sleep(delay_seconds)
 
-# Commit messages pool — picked randomly for variety
+# Commit messages pool — picked randomly for variety.
 messages = [
-    "Update activity",
-    "Routine update",
-    "Keep it going",
-    "Daily sync",
-    "Heartbeat",
-    "Maintenance update",
-    "Regular check-in",
+    "Update notes",
+    "Refresh log",
+    "Tidy activity file",
+    "Sync heartbeat",
+    "Record checkpoint",
+    "Minor maintenance",
+    "Adjust notes",
+    "Update tracker",
+    "Refresh heartbeat",
+    "Log checkpoint",
+    "Small cleanup",
+    "Sync notes",
 ]
 
 import os
@@ -101,20 +152,23 @@ git_env = {
 subprocess.run(["git", "config", "user.email", git_email], check=True)
 subprocess.run(["git", "config", "user.name", git_name], check=True)
 
+previous_message = last_commit_message()
+
 for index in range(commits_this_run):
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     with open(HEARTBEAT_PATH, "a") as f:
         f.write(f"{timestamp}\n")
 
-    message = random.choice(messages)
+    message = choose_commit_message(previous_message)
     subprocess.run(["git", "add", HEARTBEAT_PATH], check=True)
     subprocess.run(
         ["git", "commit", "--author", f"{git_name} <{git_email}>", "-m", message],
         check=True,
         env=git_env,
     )
+    previous_message = message
 
     if index < commits_this_run - 1:
-        time.sleep(random.randint(3 * 60, 18 * 60))
+        time.sleep(random.randint(5 * 60, 20 * 60))
 
 print(f"Created {commits_this_run} activity commit(s) ({already_done + commits_this_run}/{target_commits} today).")

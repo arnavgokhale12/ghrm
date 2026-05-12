@@ -1,10 +1,10 @@
 # ghrm — GitHub Activity Bot
 
-Keeps your GitHub contribution calendar active by automatically committing a timestamp to `heartbeat.txt` once or twice a day.
+Keeps your GitHub contribution calendar active by automatically committing timestamps to `heartbeat.txt` on a weighted 0-4 commits/day pattern.
 
 ## How it works
 
-- **`activity_bot.py`** — chooses a weighted daily commit target from 0–4, with 2 most common and 0 rare. Each run appends timestamp entries to `heartbeat.txt`, commits them with randomly chosen messages, and sleeps random offsets so commits don't land at the exact same time each day.
+- **`activity_bot.py`** — chooses a weighted daily commit target from 0-4. Weekdays lean toward 2-3 commits, weekends lean toward 0-1, 0 remains uncommon on weekdays, and rare two-day breaks are possible. Each run appends timestamp entries to `heartbeat.txt`, commits them with non-repeating random messages, caps each run at two commits, and sleeps random offsets so commits don't land at the exact same time each day.
 - **`.github/workflows/activity.yml`** — GitHub Actions workflow that runs the script at ~9 AM and ~6 PM UTC daily.
 
 ## Toggling on/off

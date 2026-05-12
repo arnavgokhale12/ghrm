@@ -328,13 +328,13 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-text">
-            <strong>activity_bot.py</strong> sleeps a random 0–20 min offset, then appends a UTC timestamp to <code>heartbeat.txt</code> so commits don't land at the exact same second.
+            <strong>activity_bot.py</strong> picks a weighted daily target from 0–4, with weekdays busier, weekends lighter, and rare two-day breaks.
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-text">
-            The script picks a <strong>random commit message</strong> from a pool and pushes — keeping the contribution graph alive without a fixed fingerprint.
+            Each run is capped at two commits, uses random timing offsets, and avoids repeating the previous <strong>commit message</strong>.
           </div>
         </div>
         <div class="step">
